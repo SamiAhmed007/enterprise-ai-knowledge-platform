@@ -1,0 +1,2 @@
+The enterprise support desk is available Monday through Friday from 09:00 to 17:00 Eastern Time.
+Critical incidents should be escalated through the on-call rotation.

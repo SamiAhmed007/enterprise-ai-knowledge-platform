@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675">
+  <rect width="1200" height="675" fill="#f5f7fb"/>
+  <rect width="240" height="675" fill="#111827"/>
+  <text x="280" y="66" font-family="sans-serif" font-size="28" font-weight="700" fill="#0f172a">Admin analytics</text>
+  <g fill="#fff" stroke="#e2e8f0">
+    <rect x="280" y="95" width="160" height="105" rx="16"/>
+    <rect x="455" y="95" width="160" height="105" rx="16"/>
+    <rect x="630" y="95" width="160" height="105" rx="16"/>
+    <rect x="805" y="95" width="160" height="105" rx="16"/>
+    <rect x="980" y="95" width="160" height="105" rx="16"/>
+    <rect x="280" y="220" width="330" height="260" rx="16"/>
+    <rect x="630" y="220" width="510" height="260" rx="16"/>
+    <rect x="280" y="500" width="860" height="125" rx="16"/>
+  </g>
+  <text x="710" y="372" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#334155">Admin analytics screenshot</text>
+  <text x="710" y="405" text-anchor="middle" font-family="sans-serif" font-size="15" fill="#94a3b8">Replace with a capture from your deployed environment</text>
+</svg>

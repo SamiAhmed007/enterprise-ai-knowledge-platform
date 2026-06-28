@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { @apply border-slate-200; }
+  html { @apply scroll-smooth; }
+  body { @apply m-0 bg-canvas text-slate-900 antialiased; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+  ::selection { @apply bg-brand-100 text-brand-700; }
+  button, input, textarea { font: inherit; }
+  button, a, input, textarea, select { @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2; }
+}
+
+@layer components {
+  .panel { @apply rounded-2xl border border-slate-200/80 bg-white shadow-panel transition-shadow duration-200; }
+  .btn-primary { @apply inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-px hover:bg-brand-700 hover:shadow-md disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50; }
+  .btn-secondary { @apply inline-flex items-center justify-center gap-2 rounded-xl border bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50; }
+  .input { @apply w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-100; }
+  .label { @apply mb-1.5 block text-sm font-medium text-slate-700; }
+  .skeleton { @apply animate-pulse rounded-lg bg-slate-100; }
+}

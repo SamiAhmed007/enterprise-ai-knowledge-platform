@@ -1,0 +1,77 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: enterprise-ai-knowledge-platform
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/knowledge_platform}
+    username: ${DATABASE_USERNAME:knowledge}
+    password: ${DATABASE_PASSWORD:knowledge}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc.time_zone: UTC
+  flyway:
+    enabled: true
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      ssl:
+        enabled: ${REDIS_SSL_ENABLED:false}
+      repositories:
+        enabled: false
+  servlet:
+    multipart:
+      max-file-size: 25MB
+      max-request-size: 25MB
+  task:
+    execution:
+      pool:
+        core-size: 2
+        max-size: 8
+        queue-capacity: 100
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+app:
+  cors:
+    allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:*,http://127.0.0.1:*}
+  jwt:
+    secret: ${JWT_SECRET:development-only-secret-key-change-me-123456789}
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+  storage:
+    upload-dir: ${UPLOAD_DIR:./uploads}
+  ai:
+    provider: ${AI_PROVIDER:openai}
+    api-key: ${OPENAI_API_KEY:}
+    base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
+    chat-model: ${OPENAI_CHAT_MODEL:gpt-4o-mini}
+    embedding-model: ${OPENAI_EMBEDDING_MODEL:text-embedding-3-small}
+    embedding-dimensions: ${EMBEDDING_DIMENSIONS:1536}
+    azure-api-version: ${AZURE_OPENAI_API_VERSION:2024-10-21}
+  retrieval:
+    top-k: ${RAG_TOP_K:5}
+    vector-weight: ${RAG_VECTOR_WEIGHT:0.7}
+    keyword-weight: ${RAG_KEYWORD_WEIGHT:0.3}
+    minimum-score: ${RAG_MINIMUM_SCORE:0.15}
+  rate-limit:
+    chat-requests-per-minute: ${RATE_LIMIT_CHAT_PER_MINUTE:20}
+    document-uploads-per-hour: ${RATE_LIMIT_UPLOADS_PER_HOUR:30}
+  bootstrap-admin:
+    email: ${ADMIN_EMAIL:}
+    password: ${ADMIN_PASSWORD:}
+    name: ${ADMIN_NAME:Platform Administrator}
+
+logging:
+  level:
+    com.enterpriseai.knowledge: INFO
