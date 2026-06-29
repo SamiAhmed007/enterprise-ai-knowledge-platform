@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#070b14"/>
+      <stop offset="1" stop-color="#111936"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="675" fill="url(#bg)"/>
+  <rect x="64" y="48" width="44" height="44" rx="12" fill="#6366f1"/>
+  <text x="124" y="77" font-family="sans-serif" font-size="19" font-weight="600" fill="#fff">Nexus Knowledge</text>
+  <text x="80" y="260" font-family="sans-serif" font-size="54" font-weight="700" fill="#fff">Landing page screenshot</text>
+  <text x="80" y="312" font-family="sans-serif" font-size="20" fill="#94a3b8">Replace with your deployed desktop and mobile captures</text>
+  <rect x="80" y="360" width="176" height="52" rx="13" fill="#6366f1"/>
+  <text x="168" y="393" text-anchor="middle" font-family="sans-serif" font-size="16" font-weight="600" fill="#fff">Try the platform</text>
+  <rect x="690" y="150" width="420" height="360" rx="24" fill="#101624" stroke="#334155"/>
+  <rect x="730" y="215" width="330" height="50" rx="14" fill="#6366f1"/>
+  <rect x="730" y="300" width="280" height="14" rx="7" fill="#64748b"/>
+  <rect x="730" y="330" width="320" height="14" rx="7" fill="#475569"/>
+  <rect x="730" y="380" width="330" height="82" rx="14" fill="#182033" stroke="#334155"/>
+</svg>

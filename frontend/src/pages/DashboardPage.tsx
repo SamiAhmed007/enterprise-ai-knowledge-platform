@@ -49,7 +49,7 @@ export default function DashboardPage() {
           { label: 'Knowledge indexed', value: loading ? '—' : formatBytes(indexed), detail: 'Available to the assistant', icon: Sparkles, color: 'bg-amber-50 text-amber-600' },
         ].map(({ label, value, detail, icon: Icon, color }) => (
           <div className="panel group p-5 hover:-translate-y-0.5 hover:shadow-lg" key={label}>
-            <div className="flex items-start justify-between"><div><p className="text-sm font-medium text-slate-500">{label}</p><p className="mt-2 text-3xl font-bold tracking-tight">{value}</p></div><div className={`rounded-xl p-2.5 ${color}`}><Icon size={20} /></div></div>
+            <div className="flex items-start justify-between"><div><p className="text-sm font-medium text-slate-500">{label}</p>{loading ? <div className="skeleton mt-3 h-8 w-20 dark:bg-slate-800" /> : <p className="mt-2 text-3xl font-bold tracking-tight">{value}</p>}</div><div className={`rounded-xl p-2.5 ${color}`}><Icon size={20} /></div></div>
             <p className="mt-4 flex items-center gap-1.5 text-xs text-slate-400"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />{detail}</p>
           </div>
         ))}

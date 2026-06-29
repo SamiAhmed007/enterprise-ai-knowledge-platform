@@ -144,6 +144,46 @@ class DocumentServiceTest {
         verifyNoInteractions(processor);
     }
 
+    @Test
+    void renamesDocumentWithoutAllowingItsFileTypeToChange() throws Exception {
+        DocumentRepository repository = mock(DocumentRepository.class);
+        DocumentService service = service(repository);
+        AppUser owner = AppUser.builder().id(UUID.randomUUID()).role(Role.USER).build();
+        KnowledgeDocument document = failedDocument(owner);
+        when(repository.findByIdAndWorkspaceId(document.getId(), workspaceId))
+                .thenReturn(Optional.of(document));
+        when(repository.save(document)).thenReturn(document);
+
+        DocumentResponse renamed =
+                service.rename(owner, workspaceId, document.getId(), "Employee Handbook.txt");
+
+        assertThat(renamed.name()).isEqualTo("Employee Handbook.txt");
+        verify(repository).save(document);
+        assertThatThrownBy(() ->
+                service.rename(owner, workspaceId, document.getId(), "Employee Handbook.pdf"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("extension cannot be changed");
+    }
+
+    @Test
+    void previewsOnlyAnAccessibleStoredDocument() throws Exception {
+        DocumentRepository repository = mock(DocumentRepository.class);
+        DocumentService service = service(repository);
+        AppUser owner = AppUser.builder().id(UUID.randomUUID()).role(Role.USER).build();
+        KnowledgeDocument document = failedDocument(owner);
+        Path stored = uploadDirectory.resolve(document.getStoredName());
+        Files.writeString(stored, "preview content");
+        when(repository.findByIdAndWorkspaceId(document.getId(), workspaceId))
+                .thenReturn(Optional.of(document));
+
+        DocumentService.DocumentPreview preview =
+                service.preview(owner, workspaceId, document.getId());
+
+        assertThat(preview.path()).isEqualTo(stored);
+        assertThat(preview.name()).isEqualTo("handbook.txt");
+        assertThat(Files.readString(preview.path())).isEqualTo("preview content");
+    }
+
     private DocumentService service(DocumentRepository repository) throws Exception {
         return service(repository, mock(DocumentProcessor.class));
     }

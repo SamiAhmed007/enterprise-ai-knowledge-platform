@@ -16,6 +16,10 @@ public final class ChatDtos {
             @NotBlank @Size(max = 8000) String question
     ) {}
 
+    public record RenameSessionRequest(
+            @NotBlank @Size(max = 250) String title
+    ) {}
+
     public record Citation(
             UUID documentId,
             String documentName,

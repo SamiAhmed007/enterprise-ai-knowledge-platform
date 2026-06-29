@@ -145,6 +145,44 @@ public class DocumentService {
         }
     }
 
+    @Transactional
+    public DocumentResponse rename(AppUser user, UUID workspaceId, UUID id, String requestedName) {
+        KnowledgeDocument document = requireAccessible(user, workspaceId, id);
+        String name = Paths.get(requestedName.strip()).getFileName().toString();
+        if (name.isBlank() || name.length() > 500) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The document name is invalid");
+        }
+        String currentExtension = TextExtractionService.extension(document.getOriginalName());
+        String requestedExtension = TextExtractionService.extension(name);
+        if (!requestedExtension.equals(currentExtension)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "The document file extension cannot be changed");
+        }
+        document.setOriginalName(name);
+        return toResponse(documents.save(document));
+    }
+
+    @Transactional(readOnly = true)
+    public DocumentPreview preview(AppUser user, UUID workspaceId, UUID id) {
+        KnowledgeDocument document = requireAccessible(user, workspaceId, id);
+        Path path = uploadRoot.resolve(document.getStoredName()).normalize();
+        if (!path.startsWith(uploadRoot) || !Files.isRegularFile(path)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "The stored document is unavailable");
+        }
+        String contentType = document.getContentType();
+        if (contentType == null || contentType.isBlank()) {
+            try {
+                contentType = Files.probeContentType(path);
+            } catch (IOException ignored) {
+                contentType = null;
+            }
+        }
+        return new DocumentPreview(
+                path,
+                document.getOriginalName(),
+                contentType == null ? "application/octet-stream" : contentType);
+    }
+
     private KnowledgeDocument requireAccessible(AppUser user, UUID workspaceId, UUID id) {
         workspaces.requireAccessible(user, workspaceId);
         KnowledgeDocument document = documents.findByIdAndWorkspaceId(id, workspaceId)
@@ -183,4 +221,6 @@ public class DocumentService {
                 document.getOwner().getName(), document.getOwner().getEmail()
         );
     }
+
+    public record DocumentPreview(Path path, String name, String contentType) {}
 }

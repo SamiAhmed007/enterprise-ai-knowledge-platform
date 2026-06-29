@@ -52,6 +52,20 @@ class AiRateLimitFilterTest {
     }
 
     @Test
+    void countsAnswerRegenerationAsAChatRequest() throws Exception {
+        when(rateLimits.consume("user@example.com", RateLimitService.Bucket.CHAT))
+                .thenReturn(new RateLimitService.Decision(true, 20, 5, 0));
+        MockHttpServletRequest request = post(
+                "/api/workspaces/workspace-id/chats/session-id/regenerate");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter.doFilter(request, response, chain);
+
+        verify(rateLimits).consume("user@example.com", RateLimitService.Bucket.CHAT);
+        verify(chain).doFilter(request, response);
+    }
+
+    @Test
     void rejectsDocumentUploadWithClear429Response() throws Exception {
         when(rateLimits.consume("user@example.com", RateLimitService.Bucket.DOCUMENT_UPLOAD))
                 .thenReturn(new RateLimitService.Decision(false, 30, 31, 1800));

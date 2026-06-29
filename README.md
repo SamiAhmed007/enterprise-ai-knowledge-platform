@@ -2,6 +2,10 @@
 
 A production-style, full-stack retrieval-augmented generation (RAG) platform for securely uploading company documents and asking source-grounded questions. The application provides user-isolated document search, persisted conversation history, inline citations, and an administrator view.
 
+[Live demo (local Docker)](http://localhost:3000) · [API health](http://localhost:8080/actuator/health)
+
+> Deployment owners can replace the local demo URL above with the public Vercel or container ingress URL.
+
 ![Dashboard placeholder](docs/screenshots/dashboard-placeholder.svg)
 
 ## Features
@@ -22,12 +26,19 @@ A production-style, full-stack retrieval-augmented generation (RAG) platform for
 - Redis-backed per-user limits for costly chat and document-upload operations
 - Structured JSON request logs with correlation IDs, user UUIDs, latency, and safe async context propagation
 - Responsive React dashboard built with TypeScript and Tailwind CSS
+- Public SaaS landing page, persistent dark/light mode, professional responsive navigation, and branded favicon
+- Markdown/GFM answers with tables, lists, inline code, styled code blocks, copy controls, and streaming feedback
+- Expandable source cards with page metadata, relevance score, evidence preview, and copyable citations
+- Drag-and-drop uploads with progress, document preview/rename/delete/retry, and confirmation dialogs
+- Conversation rename/delete/regenerate/copy controls plus `Enter`, `Shift+Enter`, and `Cmd/Ctrl+K` shortcuts
+- Consistent skeleton, empty, error, success-toast, and destructive-confirmation states
 
 ## Architecture
 
 ```mermaid
 flowchart LR
     UI["React + TypeScript"] -->|JWT REST| API["Spring Boot API"]
+    CDN["Vercel or Nginx SPA"] --> UI
     API --> AUTH["Spring Security"]
     API --> HYBRID["Hybrid ranker"]
     HYBRID --> PG[("PostgreSQL: pgvector + full-text search")]
@@ -37,6 +48,7 @@ flowchart LR
     WORKER --> AI["OpenAI / Azure OpenAI"]
     WORKER --> PG
     API -->|Question + retrieved context| AI
+    INGRESS["TLS ingress / load balancer"] --> API
 ```
 
 ### Architecture at a glance
@@ -48,6 +60,10 @@ flowchart LR
 5. Chat requests create an embedding, execute workspace-scoped semantic and keyword retrieval, combine both rankings, and send only the selected context to the AI provider.
 6. Answers stream over SSE, include citation metadata, and are persisted only after successful completion.
 7. PostgreSQL is the source of truth, Redis stores short-lived cache and rate-limit state, and container stdout carries structured logs for aggregation.
+
+### Deployment architecture
+
+The frontend can be deployed as a Vercel SPA (using `frontend/vercel.json`) or as the included Nginx container. The Spring Boot container runs behind an HTTPS ingress, persists relational/vector data in managed PostgreSQL with pgvector, connects to managed Redis such as Upstash over TLS, and stores provider credentials in the deployment secret manager. The local Compose topology mirrors those service boundaries and adds a persistent upload volume for demonstration.
 
 Documents and conversations belong to a workspace. Uploads are stored on a persistent volume, while chunk content, PostgreSQL `tsvector` terms, and 1,536-dimensional embeddings are stored in PostgreSQL. Each question runs through semantic and keyword retrieval over only the selected workspace's ready documents. Their normalized signals are merged into a configurable hybrid score, and the top passages are sent to the configured model. Both the answer and detailed citation metadata are persisted.
 
@@ -216,11 +232,15 @@ All endpoints except authentication and health require `Authorization: Bearer <t
 | `GET` | `/api/workspaces/{workspaceId}/documents` | Workspace access | List workspace documents |
 | `POST` | `/api/workspaces/{workspaceId}/documents` | Workspace access | Upload a multipart `file` |
 | `POST` | `/api/workspaces/{workspaceId}/documents/{id}/retry` | Workspace access | Retry a failed ingestion |
+| `PATCH` | `/api/workspaces/{workspaceId}/documents/{id}` | Workspace access | Rename a document without changing its file type |
+| `GET` | `/api/workspaces/{workspaceId}/documents/{id}/preview` | Workspace access | Stream the original document for an authorized inline preview |
 | `DELETE` | `/api/workspaces/{workspaceId}/documents/{id}` | Workspace access | Delete a document and chunks |
 | `POST` | `/api/workspaces/{workspaceId}/chats/ask` | Workspace access | Ask a question; optionally pass `sessionId` |
 | `POST` | `/api/workspaces/{workspaceId}/chats/stream` | Workspace access | Stream an answer as named SSE events |
 | `GET` | `/api/workspaces/{workspaceId}/chats` | Workspace access | List the current user's workspace sessions |
 | `GET` | `/api/workspaces/{workspaceId}/chats/{id}` | Session owner | Retrieve messages and citations |
+| `PATCH` | `/api/workspaces/{workspaceId}/chats/{id}` | Session owner | Rename a conversation |
+| `POST` | `/api/workspaces/{workspaceId}/chats/{id}/regenerate` | Session owner | Replace the latest assistant answer using fresh retrieval |
 | `DELETE` | `/api/workspaces/{workspaceId}/chats/{id}` | Session owner | Delete a chat session |
 | `GET` | `/api/admin/stats` | Admin | Platform statistics |
 | `GET` | `/api/admin/analytics` | Admin | Operational analytics, recent activity, failed jobs, and token estimates |
@@ -354,9 +374,19 @@ Backend coverage includes authentication behavior, workspace ownership, admin RB
 
 ## Screenshot placeholders
 
+![Landing page placeholder](docs/screenshots/landing-placeholder.svg)
+
 ![Admin analytics placeholder](docs/screenshots/admin-analytics-placeholder.svg)
 
 ![Chat placeholder](docs/screenshots/chat-placeholder.svg)
+
+Recommended release captures:
+
+- Public landing page in desktop and mobile layouts
+- Light and dark authenticated dashboards
+- Document ingestion states and preview controls
+- Streaming chat with Markdown and expanded citation evidence
+- Administrator analytics and failed-ingestion table
 
 The admin analytics page is available at `/admin` to users with the `ADMIN` role. Its token total combines stored ingestion chunk estimates with an approximation of persisted chat text (`characters ÷ 4`); it is an operational indicator rather than a provider billing total.
 
@@ -366,7 +396,7 @@ Replace the SVG files under `docs/screenshots/` with captures from the deployed 
 
 **Enterprise AI Knowledge Platform — Spring Boot, React, PostgreSQL/pgvector, Redis, OpenAI, Docker**
 
-Built a production-style, multi-tenant RAG platform with JWT/RBAC security, isolated workspaces, asynchronous PDF/TXT/DOCX ingestion, pgvector plus PostgreSQL full-text hybrid retrieval, source-grounded streaming AI chat, persisted conversation history, admin analytics, Redis rate limiting/caching, structured request tracing, Flyway migrations, Docker Compose, and GitHub Actions. Added bounded background processing, ingestion retries, correlation-aware error handling, responsive TypeScript/Tailwind workflows, and automated tests covering authorization boundaries and critical failure paths.
+Built a demo-ready, multi-tenant RAG SaaS with JWT/RBAC security, isolated workspaces, asynchronous PDF/TXT/DOCX ingestion, pgvector plus PostgreSQL full-text hybrid retrieval, source-grounded streaming AI chat, persisted conversation history, admin analytics, Redis rate limiting/caching, structured request tracing, Flyway migrations, Docker Compose, and GitHub Actions. Delivered a responsive dark/light React product experience with Markdown answers, expandable citations, upload progress, document preview/rename/retry, conversation regeneration, keyboard shortcuts, and authorization-focused automated tests.
 
 ## Remaining limitations
 
@@ -376,3 +406,4 @@ Built a production-style, multi-tenant RAG platform with JWT/RBAC security, isol
 - JWTs are stored in browser local storage and cannot be revoked individually before expiration. A higher-assurance deployment should use short-lived access tokens, rotating refresh tokens in secure HTTP-only cookies, and a revocation strategy.
 - Background work uses the application process rather than an external durable queue. Failed dispatch is detected and retryable, but multi-node/high-volume deployments should use a durable broker and idempotent workers.
 - Chat citations are retrieval evidence, not a guarantee that every generated sentence is entailed; production deployments should add RAG evaluation, moderation, and provider usage monitoring.
+- PDF and text files usually preview inline; browser support for DOCX varies and may download the authorized original instead.

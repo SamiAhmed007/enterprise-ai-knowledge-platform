@@ -44,6 +44,13 @@ const stack = [
   ['Docker + GitHub Actions', 'Repeatable delivery'],
 ]
 
+const workflow = [
+  ['01', 'Upload', 'Add PDF, DOCX, or TXT sources to an isolated workspace.'],
+  ['02', 'Index', 'Background workers extract, chunk, and embed every useful passage.'],
+  ['03', 'Ask', 'Hybrid search finds evidence and streams a grounded answer.'],
+  ['04', 'Verify', 'Open citations, inspect the source preview, and share with confidence.'],
+]
+
 export default function LandingPage() {
   const { user } = useAuth()
   if (user) return <Navigate to="/dashboard" replace />
@@ -152,6 +159,24 @@ export default function LandingPage() {
         </section>
 
         <section className="mx-auto max-w-7xl px-5 py-24 sm:px-8">
+          <div className="text-center">
+            <p className="text-sm font-semibold text-brand-300">From upload to answer</p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">A workflow designed for trust.</h2>
+          </div>
+          <div className="relative mt-12 grid gap-4 md:grid-cols-4">
+            <div className="absolute left-[12%] right-[12%] top-7 hidden h-px bg-gradient-to-r from-transparent via-brand-400/40 to-transparent md:block" />
+            {workflow.map(([number, title, description]) => (
+              <article key={number} className="relative rounded-2xl border border-white/[.08] bg-[#0d1321] p-5">
+                <span className="grid h-12 w-12 place-items-center rounded-xl border border-brand-400/20 bg-brand-500/10 text-xs font-bold text-brand-300">{number}</span>
+                <h3 className="mt-5 font-semibold">{title}</h3>
+                <p className="mt-2 text-xs leading-5 text-slate-500">{description}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="border-y border-white/[.07] bg-white/[.025]">
+          <div className="mx-auto max-w-7xl px-5 py-24 sm:px-8">
           <div className="grid items-start gap-14 lg:grid-cols-[.8fr_1.2fr]">
             <div>
               <span className="grid h-11 w-11 place-items-center rounded-xl bg-brand-500/10 text-brand-300"><Boxes size={21} /></span>
@@ -168,6 +193,7 @@ export default function LandingPage() {
                 </div>
               ))}
             </div>
+          </div>
           </div>
         </section>
 

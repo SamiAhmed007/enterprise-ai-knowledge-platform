@@ -1,11 +1,13 @@
 import { FormEvent, useState } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
-import { ArrowRight, BookOpen, CheckCircle2, Eye, EyeOff, Loader2, LockKeyhole } from 'lucide-react'
+import { ArrowRight, BookOpen, CheckCircle2, Eye, EyeOff, Loader2, LockKeyhole, Moon, Sun } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { errorMessage } from '../lib/api'
+import { useTheme } from '../context/ThemeContext'
 
 export default function AuthPage() {
   const { user, login, signup } = useAuth()
+  const { theme, toggleTheme } = useTheme()
   const [searchParams] = useSearchParams()
   const [mode, setMode] = useState<'login' | 'signup'>(
     searchParams.get('mode') === 'signup' ? 'signup' : 'login',
@@ -53,32 +55,35 @@ export default function AuthPage() {
         </div>
         <p className="relative text-xs text-slate-500">Built for teams that care where the answer came from.</p>
       </section>
-      <section className="flex items-center justify-center px-6 py-12">
+      <section className="relative flex items-center justify-center px-6 py-12 dark:bg-slate-950 dark:text-white">
+        <button aria-label={`Use ${theme === 'dark' ? 'light' : 'dark'} mode`} onClick={toggleTheme} className="absolute right-5 top-5 rounded-xl border bg-white p-2.5 text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+          {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+        </button>
         <div className="w-full max-w-md">
           <div className="mb-9 lg:hidden"><Link to="/" className="flex items-center gap-2 font-semibold"><BookOpen className="text-brand-600" />Nexus Knowledge</Link></div>
           <div className="mb-8">
-            <h2 className="text-3xl font-bold tracking-tight">{mode === 'login' ? 'Welcome back' : 'Create your workspace account'}</h2>
+            <h2 className="text-3xl font-bold tracking-tight dark:text-white">{mode === 'login' ? 'Welcome back' : 'Create your workspace account'}</h2>
             <p className="mt-2 text-sm text-slate-500">{mode === 'login' ? 'Sign in to continue to your knowledge base.' : 'Start asking better questions of your documents.'}</p>
           </div>
-          <div className="mb-7 grid grid-cols-2 rounded-xl bg-slate-100 p-1">
+          <div className="mb-7 grid grid-cols-2 rounded-xl bg-slate-100 p-1 dark:bg-slate-900">
             {(['login', 'signup'] as const).map(item => (
               <button
                 type="button"
                 key={item}
                 onClick={() => { setMode(item); setError('') }}
-                className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${mode === item ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${mode === item ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
               >
                 {item === 'login' ? 'Sign in' : 'Create account'}
               </button>
             ))}
           </div>
           <form onSubmit={submit} className="space-y-5">
-            {mode === 'signup' && <div><label className="label">Full name</label><input className="input" value={name} onChange={e => setName(e.target.value)} required maxLength={120} placeholder="Ada Lovelace" /></div>}
-            <div><label className="label">Work email</label><input className="input" type="email" value={email} onChange={e => setEmail(e.target.value)} required placeholder="you@company.com" /></div>
+            {mode === 'signup' && <div><label className="label">Full name</label><input className="input dark:border-slate-700 dark:bg-slate-900 dark:text-white" value={name} onChange={e => setName(e.target.value)} required maxLength={120} placeholder="Ada Lovelace" /></div>}
+            <div><label className="label">Work email</label><input className="input dark:border-slate-700 dark:bg-slate-900 dark:text-white" type="email" value={email} onChange={e => setEmail(e.target.value)} required placeholder="you@company.com" /></div>
             <div>
               <label className="label">Password</label>
               <div className="relative">
-                <input className="input pr-11" type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} required minLength={8} placeholder="At least 8 characters" />
+                <input className="input pr-11 dark:border-slate-700 dark:bg-slate-900 dark:text-white" type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} required minLength={8} placeholder="At least 8 characters" />
                 <button type="button" aria-label={showPassword ? 'Hide password' : 'Show password'} onClick={() => setShowPassword(value => !value)} className="absolute inset-y-0 right-0 grid w-11 place-items-center text-slate-400 hover:text-slate-600">
                   {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
                 </button>

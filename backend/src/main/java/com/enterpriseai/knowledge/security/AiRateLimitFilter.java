@@ -19,7 +19,7 @@ import java.util.regex.Pattern;
 @Component
 public class AiRateLimitFilter extends OncePerRequestFilter {
     private static final Pattern CHAT_ENDPOINT = Pattern.compile(
-            "^/api/workspaces/[^/]+/chats/(ask|stream)$");
+            "^/api/workspaces/[^/]+/chats/(ask|stream|[^/]+/regenerate)$");
     private static final Pattern DOCUMENT_UPLOAD_ENDPOINT = Pattern.compile(
             "^/api/workspaces/[^/]+/documents/?$");
 

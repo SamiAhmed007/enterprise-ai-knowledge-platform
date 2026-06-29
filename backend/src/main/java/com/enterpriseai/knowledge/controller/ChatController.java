@@ -61,6 +61,25 @@ public class ChatController {
         return chats.get(currentUser.require(authentication), workspaceId, id);
     }
 
+    @PatchMapping("/{id}")
+    public SessionSummary rename(
+            Authentication authentication,
+            @PathVariable UUID workspaceId,
+            @PathVariable UUID id,
+            @Valid @RequestBody RenameSessionRequest request
+    ) {
+        return chats.rename(currentUser.require(authentication), workspaceId, id, request.title());
+    }
+
+    @PostMapping("/{id}/regenerate")
+    public AskResponse regenerate(
+            Authentication authentication,
+            @PathVariable UUID workspaceId,
+            @PathVariable UUID id
+    ) {
+        return chats.regenerate(currentUser.require(authentication), workspaceId, id);
+    }
+
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(

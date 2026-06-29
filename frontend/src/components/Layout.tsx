@@ -1,10 +1,11 @@
 import { FormEvent, ReactNode, useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { BookOpen, ChevronDown, FileText, LayoutDashboard, LogOut, Menu, MessageSquareText, Plus, Settings2, X } from 'lucide-react'
+import { BookOpen, ChevronDown, FileText, LayoutDashboard, LogOut, Menu, MessageSquareText, Moon, Plus, Settings2, Sun, X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useWorkspace } from '../context/WorkspaceContext'
 import { errorMessage } from '../lib/api'
 import Toast from './Toast'
+import { useTheme } from '../context/ThemeContext'
 
 const links = [
   { to: '/dashboard', label: 'Overview', icon: LayoutDashboard },
@@ -14,6 +15,7 @@ const links = [
 
 export default function Layout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth()
+  const { theme, toggleTheme } = useTheme()
   const { workspaces, activeWorkspaceId, selectWorkspace, createWorkspace, loading, error } = useWorkspace()
   const [open, setOpen] = useState(false)
   const [creating, setCreating] = useState(false)
@@ -45,7 +47,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   }, [success])
 
   return (
-    <div className="min-h-screen bg-canvas">
+    <div className="min-h-screen bg-canvas dark:bg-slate-950">
       <header className="fixed inset-x-0 top-0 z-30 flex h-16 items-center border-b border-slate-200/80 bg-white/90 px-4 backdrop-blur-xl lg:hidden">
         <button aria-label="Open navigation" className="rounded-xl border bg-white p-2.5 text-slate-600 shadow-sm" onClick={() => setOpen(true)}><Menu size={19} /></button>
         <div className="ml-3 flex items-center gap-2.5 font-semibold"><span className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-brand-500 to-violet-500 text-white shadow-sm"><BookOpen size={16} /></span>Nexus</div>
@@ -83,6 +85,11 @@ export default function Layout({ children }: { children: ReactNode }) {
           ))}
         </nav>
         <div className="mt-auto rounded-2xl border border-white/[.08] bg-white/[.045] p-3">
+          <button onClick={toggleTheme} className="mb-3 flex w-full items-center gap-3 rounded-xl px-2 py-2 text-xs font-medium text-slate-400 transition hover:bg-white/5 hover:text-white">
+            {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+            {theme === 'dark' ? 'Use light mode' : 'Use dark mode'}
+            <span className="ml-auto rounded-md border border-white/10 px-1.5 py-0.5 text-[9px]">Theme</span>
+          </button>
           <div className="flex items-center gap-3">
             <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-violet-500 text-sm font-bold">{user?.name.slice(0, 1).toUpperCase()}</div>
             <div className="min-w-0 flex-1"><div className="truncate text-sm font-medium">{user?.name}</div><div className="truncate text-[11px] text-slate-500">{user?.email}</div></div>

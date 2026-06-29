@@ -152,6 +152,49 @@ public class ChatService {
         sessions.delete(session);
     }
 
+    @Transactional
+    public SessionSummary rename(AppUser user, UUID workspaceId, UUID id, String requestedTitle) {
+        workspaces.requireAccessible(user, workspaceId);
+        ChatSession session = requireSession(user, workspaceId, id);
+        String title = requestedTitle.strip();
+        if (title.isBlank() || title.length() > 250) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Conversation title is invalid");
+        }
+        session.setTitle(title);
+        session.setUpdatedAt(Instant.now());
+        ChatSession saved = sessions.save(session);
+        return new SessionSummary(
+                saved.getId(), workspaceId, saved.getTitle(),
+                saved.getCreatedAt(), saved.getUpdatedAt());
+    }
+
+    public AskResponse regenerate(AppUser user, UUID workspaceId, UUID id) {
+        workspaces.requireAccessible(user, workspaceId);
+        ChatSession session = requireSession(user, workspaceId, id);
+        int lastUserIndex = -1;
+        for (int i = session.getMessages().size() - 1; i >= 0; i--) {
+            if (session.getMessages().get(i).getRole() == MessageRole.USER) {
+                lastUserIndex = i;
+                break;
+            }
+        }
+        if (lastUserIndex < 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "This conversation has no question to regenerate");
+        }
+        String question = session.getMessages().get(lastUserIndex).getContent();
+        while (session.getMessages().size() > lastUserIndex + 1) {
+            session.getMessages().remove(session.getMessages().size() - 1);
+        }
+        PreparedChat prepared = prepareGrounding(session, question);
+        String answer = prepared.context().isBlank()
+                ? noContextAnswer()
+                : aiClient.answer(prepared.question(), prepared.context());
+        answer = ensureCitation(answer, prepared.citations());
+        ChatSession saved = saveCompleted(prepared, answer);
+        return new AskResponse(saved.getId(), answer, prepared.citations());
+    }
+
     private ChatSession newSession(AppUser user, Workspace workspace, String question) {
         String title = question.strip();
         if (title.length() > 80) title = title.substring(0, 80) + "…";
@@ -169,8 +212,12 @@ public class ChatService {
         addMessage(session, MessageRole.USER, question, null);
         session.setUpdatedAt(Instant.now());
 
+        return prepareGrounding(session, question);
+    }
+
+    private PreparedChat prepareGrounding(ChatSession session, String question) {
         List<HybridSearchService.SearchResult> matches =
-                retrieval.search(workspaceId, question, aiClient.embedding(question));
+                retrieval.search(session.getWorkspace().getId(), question, aiClient.embedding(question));
         StringBuilder context = new StringBuilder();
         List<Citation> citations = new ArrayList<>();
         for (int i = 0; i < matches.size(); i++) {
@@ -194,6 +241,12 @@ public class ChatService {
                     "HYBRID"));
         }
         return new PreparedChat(session, question, context.toString(), citations);
+    }
+
+    private ChatSession requireSession(AppUser user, UUID workspaceId, UUID id) {
+        return sessions.findWithMessagesByIdAndWorkspaceIdAndUserId(
+                        id, workspaceId, user.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Chat session not found"));
     }
 
     private ChatSession saveCompleted(PreparedChat prepared, String answer) {

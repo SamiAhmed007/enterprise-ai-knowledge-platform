@@ -95,9 +95,9 @@ export default function AdminPage() {
           <div className="panel flex items-center gap-4 p-5" key={label}>
             <div className="rounded-xl bg-brand-50 p-3 text-brand-600"><Icon size={20} /></div>
             <div className="min-w-0">
-              <p className="truncate text-2xl font-bold">
-                {value === undefined ? '—' : compact ? compactNumber.format(value) : number.format(value)}
-              </p>
+              {value === undefined
+                ? <div className="skeleton h-7 w-16 dark:bg-slate-800" />
+                : <p className="truncate text-2xl font-bold">{compact ? compactNumber.format(value) : number.format(value)}</p>}
               <p className="text-xs text-slate-500">{label}</p>
             </div>
           </div>

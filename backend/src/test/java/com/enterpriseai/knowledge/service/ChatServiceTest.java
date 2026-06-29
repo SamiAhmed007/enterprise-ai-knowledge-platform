@@ -1,6 +1,7 @@
 package com.enterpriseai.knowledge.service;
 
 import com.enterpriseai.knowledge.domain.AppUser;
+import com.enterpriseai.knowledge.domain.ChatMessage;
 import com.enterpriseai.knowledge.domain.ChatSession;
 import com.enterpriseai.knowledge.domain.MessageRole;
 import com.enterpriseai.knowledge.domain.Workspace;
@@ -175,5 +176,58 @@ class ChatServiceTest {
             assertThat(summary.id()).isEqualTo(session.getId());
             assertThat(summary.workspaceId()).isEqualTo(workspace.getId());
         });
+    }
+
+    @Test
+    void renamesOnlyTheUsersWorkspaceBoundSession() {
+        ChatSession session = ChatSession.builder()
+                .id(UUID.randomUUID())
+                .user(user)
+                .workspace(workspace)
+                .title("Old title")
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
+        when(sessions.findWithMessagesByIdAndWorkspaceIdAndUserId(
+                session.getId(), workspace.getId(), user.getId())).thenReturn(Optional.of(session));
+        when(sessions.save(session)).thenReturn(session);
+
+        var renamed = service.rename(user, workspace.getId(), session.getId(), "Quarterly policy review");
+
+        assertThat(renamed.title()).isEqualTo("Quarterly policy review");
+        assertThat(session.getTitle()).isEqualTo("Quarterly policy review");
+        verify(sessions).save(session);
+    }
+
+    @Test
+    void regeneratesTheLastAnswerWithoutDuplicatingTheQuestion() {
+        ChatSession session = ChatSession.builder()
+                .id(UUID.randomUUID())
+                .user(user)
+                .workspace(workspace)
+                .title("Retention")
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
+        session.getMessages().add(ChatMessage.builder()
+                .session(session).role(MessageRole.USER).content("What is retention?").build());
+        session.getMessages().add(ChatMessage.builder()
+                .session(session).role(MessageRole.ASSISTANT).content("Old answer").build());
+        when(sessions.findWithMessagesByIdAndWorkspaceIdAndUserId(
+                session.getId(), workspace.getId(), user.getId())).thenReturn(Optional.of(session));
+        when(retrieval.search(eq(workspace.getId()), eq("What is retention?"), anyList()))
+                .thenReturn(List.of(new HybridSearchService.SearchResult(
+                        UUID.randomUUID(), "policy.pdf", 1, 2,
+                        "Records are retained for seven years.", 0.9, 0.87, 0.97)));
+        when(ai.answer(eq("What is retention?"), anyString()))
+                .thenReturn("Records are retained for seven years. [Source 1]");
+
+        var regenerated = service.regenerate(user, workspace.getId(), session.getId());
+
+        assertThat(regenerated.answer()).contains("seven years").contains("[Source 1]");
+        assertThat(session.getMessages()).hasSize(2);
+        assertThat(session.getMessages().get(0).getRole()).isEqualTo(MessageRole.USER);
+        assertThat(session.getMessages().get(1).getContent()).contains("seven years");
+        verify(sessions).save(session);
     }
 }

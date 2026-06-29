@@ -1,5 +1,5 @@
 import { ChangeEvent, DragEvent, useCallback, useEffect, useRef, useState } from 'react'
-import { AlertCircle, FileCheck2, FileText, Loader2, RotateCcw, Trash2, UploadCloud } from 'lucide-react'
+import { AlertCircle, Eye, FileCheck2, FileText, Loader2, Pencil, RotateCcw, Trash2, UploadCloud } from 'lucide-react'
 import PageHeader from '../components/PageHeader'
 import InlineError from '../components/InlineError'
 import { api, errorMessage, formatBytes } from '../lib/api'
@@ -7,10 +7,13 @@ import { Document } from '../types'
 import { useWorkspace } from '../context/WorkspaceContext'
 import StatusBadge from '../components/StatusBadge'
 import Toast from '../components/Toast'
+import ConfirmModal from '../components/ConfirmModal'
+import PromptModal from '../components/PromptModal'
 
 export default function DocumentsPage() {
   const { activeWorkspaceId, activeWorkspace } = useWorkspace()
   const [documents, setDocuments] = useState<Document[]>([])
+  const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [uploadingName, setUploadingName] = useState('')
@@ -18,13 +21,19 @@ export default function DocumentsPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [dragActive, setDragActive] = useState(false)
+  const [renaming, setRenaming] = useState<Document | null>(null)
+  const [deleting, setDeleting] = useState<Document | null>(null)
+  const [deletingBusy, setDeletingBusy] = useState(false)
+  const [previewingId, setPreviewingId] = useState<string | null>(null)
   const input = useRef<HTMLInputElement>(null)
 
   const load = useCallback(() => {
-    if (!activeWorkspaceId) { setDocuments([]); return Promise.resolve() }
+    if (!activeWorkspaceId) { setDocuments([]); setLoading(false); return Promise.resolve() }
+    setLoading(true)
     return api.get<Document[]>(`/workspaces/${activeWorkspaceId}/documents`)
       .then(response => { setDocuments(response.data); setError('') })
       .catch(err => setError(errorMessage(err)))
+      .finally(() => setLoading(false))
   }, [activeWorkspaceId])
   useEffect(() => { void load() }, [load])
   useEffect(() => {
@@ -86,16 +95,52 @@ export default function DocumentsPage() {
     }
   }
 
-  const remove = async (id: string) => {
-    if (!activeWorkspaceId) return
-    if (!window.confirm('Delete this document and its indexed content?')) return
+  const rename = async (name: string) => {
+    if (!activeWorkspaceId || !renaming) return
     setError('')
     try {
-      await api.delete(`/workspaces/${activeWorkspaceId}/documents/${id}`)
-      setDocuments(items => items.filter(item => item.id !== id))
-      setSuccess('Document and indexed content deleted.')
+      const response = await api.patch<Document>(
+        `/workspaces/${activeWorkspaceId}/documents/${renaming.id}`,
+        { name },
+      )
+      setDocuments(items => items.map(item => item.id === renaming.id ? response.data : item))
+      setSuccess('Document renamed.')
+      setRenaming(null)
     } catch (err) {
       setError(errorMessage(err))
+    }
+  }
+
+  const preview = async (document: Document) => {
+    if (!activeWorkspaceId) return
+    setPreviewingId(document.id); setError('')
+    try {
+      const response = await api.get(
+        `/workspaces/${activeWorkspaceId}/documents/${document.id}/preview`,
+        { responseType: 'blob' },
+      )
+      const url = URL.createObjectURL(response.data)
+      window.open(url, '_blank', 'noopener,noreferrer')
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    } catch (err) {
+      setError(errorMessage(err))
+    } finally {
+      setPreviewingId(null)
+    }
+  }
+
+  const remove = async () => {
+    if (!activeWorkspaceId || !deleting) return
+    setDeletingBusy(true); setError('')
+    try {
+      await api.delete(`/workspaces/${activeWorkspaceId}/documents/${deleting.id}`)
+      setDocuments(items => items.filter(item => item.id !== deleting.id))
+      setSuccess('Document and indexed content deleted.')
+      setDeleting(null)
+    } catch (err) {
+      setError(errorMessage(err))
+    } finally {
+      setDeletingBusy(false)
     }
   }
 
@@ -105,6 +150,8 @@ export default function DocumentsPage() {
         action={<><input ref={input} type="file" className="hidden" accept=".pdf,.txt,.docx" onChange={upload} /><button className="btn-primary" disabled={busy} onClick={() => input.current?.click()}>{busy ? <Loader2 className="animate-spin" size={17} /> : <UploadCloud size={17} />}Upload document</button></>} />
       <InlineError message={error} retry={() => { void load() }} />
       <Toast message={success} dismiss={() => setSuccess('')} />
+      <PromptModal open={!!renaming} title="Rename document" label="Document name" initialValue={renaming?.name || ''} onCancel={() => setRenaming(null)} onSubmit={rename} />
+      <ConfirmModal open={!!deleting} title="Delete document?" description={`This permanently deletes ${deleting?.name || 'this document'} and all of its indexed chunks. This cannot be undone.`} confirmLabel="Delete document" destructive busy={deletingBusy} onCancel={() => setDeleting(null)} onConfirm={() => void remove()} />
       <div className="panel overflow-hidden">
         <div className="border-b px-5 py-5 sm:px-6">
           <h2 className="font-semibold">Knowledge sources</h2>
@@ -152,8 +199,10 @@ export default function DocumentsPage() {
                     <div className="mt-3"><StatusBadge status={document.status} /></div>
                   </div>
                   <div className="flex">
+                    <button aria-label={`Preview ${document.name}`} disabled={previewingId === document.id} onClick={() => void preview(document)} className="rounded-lg p-2 text-slate-400 hover:bg-brand-50 hover:text-brand-600">{previewingId === document.id ? <Loader2 className="animate-spin" size={16} /> : <Eye size={16} />}</button>
+                    <button aria-label={`Rename ${document.name}`} onClick={() => setRenaming(document)} className="rounded-lg p-2 text-slate-400 hover:bg-brand-50 hover:text-brand-600"><Pencil size={15} /></button>
                     {document.status === 'FAILED' && <button aria-label={`Retry ingestion for ${document.name}`} disabled={retryingId === document.id} onClick={() => retry(document.id)} className="rounded-lg p-2 text-brand-600 hover:bg-brand-50 disabled:opacity-50">{retryingId === document.id ? <Loader2 className="animate-spin" size={16} /> : <RotateCcw size={16} />}</button>}
-                    <button aria-label={`Delete ${document.name}`} onClick={() => remove(document.id)} className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600"><Trash2 size={16} /></button>
+                    <button aria-label={`Delete ${document.name}`} onClick={() => setDeleting(document)} className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600"><Trash2 size={16} /></button>
                   </div>
                 </div>
                 {document.status === 'PROCESSING' && <p className="mt-3 text-xs text-amber-600">Extracting, chunking, and indexing…</p>}
@@ -173,13 +222,14 @@ export default function DocumentsPage() {
                   <td className="px-5 py-4 text-slate-500">{formatBytes(document.sizeBytes)}</td>
                   <td className="px-5 py-4 text-slate-500">{new Date(document.createdAt).toLocaleDateString()}</td>
                   <td className="px-5 py-4"><StatusBadge status={document.status} /></td>
-                  <td className="px-5 py-4 text-right"><div className="flex justify-end gap-1">{document.status === 'FAILED' && <button title="Retry ingestion" aria-label={`Retry ingestion for ${document.name}`} disabled={retryingId === document.id} onClick={() => retry(document.id)} className="rounded-lg p-2 text-brand-600 hover:bg-brand-50 disabled:opacity-50">{retryingId === document.id ? <Loader2 className="animate-spin" size={16} /> : <RotateCcw size={16} />}</button>}<button title="Delete document" aria-label={`Delete ${document.name}`} onClick={() => remove(document.id)} className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600"><Trash2 size={16} /></button></div></td>
+                  <td className="px-5 py-4 text-right"><div className="flex justify-end gap-1"><button title="Preview document" aria-label={`Preview ${document.name}`} disabled={previewingId === document.id} onClick={() => void preview(document)} className="rounded-lg p-2 text-slate-400 hover:bg-brand-50 hover:text-brand-600">{previewingId === document.id ? <Loader2 className="animate-spin" size={16} /> : <Eye size={16} />}</button><button title="Rename document" aria-label={`Rename ${document.name}`} onClick={() => setRenaming(document)} className="rounded-lg p-2 text-slate-400 hover:bg-brand-50 hover:text-brand-600"><Pencil size={15} /></button>{document.status === 'FAILED' && <button title="Retry ingestion" aria-label={`Retry ingestion for ${document.name}`} disabled={retryingId === document.id} onClick={() => retry(document.id)} className="rounded-lg p-2 text-brand-600 hover:bg-brand-50 disabled:opacity-50">{retryingId === document.id ? <Loader2 className="animate-spin" size={16} /> : <RotateCcw size={16} />}</button>}<button title="Delete document" aria-label={`Delete ${document.name}`} onClick={() => setDeleting(document)} className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600"><Trash2 size={16} /></button></div></td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        {!documents.length && <div className="px-5 py-16 text-center"><span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-slate-50 text-slate-300"><FileText size={26} /></span><p className="mt-4 text-sm font-semibold">Your knowledge base is empty</p><p className="mt-1 text-sm text-slate-400">Upload your first document to start asking grounded questions.</p><button onClick={() => input.current?.click()} className="btn-secondary mt-5"><UploadCloud size={16} />Choose a document</button></div>}
+        {loading && !documents.length && <div className="space-y-4 px-5 py-8">{[1, 2, 3].map(item => <div key={item} className="flex items-center gap-3"><span className="skeleton h-10 w-10 dark:bg-slate-800" /><div className="flex-1"><div className="skeleton h-3 w-1/3 dark:bg-slate-800" /><div className="skeleton mt-2 h-2.5 w-1/5 dark:bg-slate-800" /></div><span className="skeleton h-6 w-20 dark:bg-slate-800" /></div>)}</div>}
+        {!loading && !documents.length && <div className="px-5 py-16 text-center"><span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-slate-50 text-slate-300"><FileText size={26} /></span><p className="mt-4 text-sm font-semibold">Your knowledge base is empty</p><p className="mt-1 text-sm text-slate-400">Upload your first document to start asking grounded questions.</p><button onClick={() => input.current?.click()} className="btn-secondary mt-5"><UploadCloud size={16} />Choose a document</button></div>}
       </div>
     </>
   )
