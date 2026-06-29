@@ -6,7 +6,10 @@ COPY src src
 RUN --mount=type=cache,target=/root/.m2 mvn -B package
 
 FROM eclipse-temurin:17-jre-jammy
-RUN groupadd --system app \
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --system app \
     && useradd --system --gid app --home-dir /app app
 WORKDIR /app
 COPY --from=build /app/target/knowledge-platform-*.jar app.jar
