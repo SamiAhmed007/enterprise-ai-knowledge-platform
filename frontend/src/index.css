@@ -12,10 +12,27 @@
 }
 
 @layer components {
-  .panel { @apply rounded-2xl border border-slate-200/80 bg-white shadow-panel transition-shadow duration-200; }
+  .panel { @apply rounded-2xl border border-slate-200/70 bg-white shadow-panel transition duration-200; }
   .btn-primary { @apply inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-px hover:bg-brand-700 hover:shadow-md disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50; }
   .btn-secondary { @apply inline-flex items-center justify-center gap-2 rounded-xl border bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50; }
   .input { @apply w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-100; }
   .label { @apply mb-1.5 block text-sm font-medium text-slate-700; }
   .skeleton { @apply animate-pulse rounded-lg bg-slate-100; }
+  .markdown { @apply break-words text-sm leading-7 text-slate-700; }
+  .markdown > *:first-child { @apply mt-0; }
+  .markdown > *:last-child { @apply mb-0; }
+  .markdown p { @apply my-3; }
+  .markdown h1 { @apply mb-3 mt-6 text-xl font-bold text-slate-950; }
+  .markdown h2 { @apply mb-3 mt-6 text-lg font-bold text-slate-950; }
+  .markdown h3 { @apply mb-2 mt-5 font-semibold text-slate-950; }
+  .markdown ul { @apply my-3 list-disc space-y-1.5 pl-5; }
+  .markdown ol { @apply my-3 list-decimal space-y-1.5 pl-5; }
+  .markdown blockquote { @apply my-4 border-l-2 border-brand-300 bg-brand-50/60 px-4 py-2 text-slate-600; }
+  .markdown a { @apply font-medium text-brand-600 underline decoration-brand-200 underline-offset-2 hover:text-brand-700; }
+  .markdown code:not(pre code) { @apply rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[.85em] text-brand-700; }
+  .markdown pre { @apply my-4 overflow-x-auto rounded-xl border border-slate-800 bg-[#0b1020] p-4 text-slate-100 shadow-inner; }
+  .markdown pre code { @apply font-mono text-xs leading-6; }
+  .markdown table { @apply my-4 w-full border-collapse overflow-hidden rounded-xl text-left text-xs; }
+  .markdown th { @apply border bg-slate-50 px-3 py-2 font-semibold; }
+  .markdown td { @apply border px-3 py-2; }
 }

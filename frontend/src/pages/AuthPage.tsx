@@ -1,12 +1,15 @@
 import { FormEvent, useState } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { ArrowRight, BookOpen, CheckCircle2, Eye, EyeOff, Loader2, LockKeyhole } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { errorMessage } from '../lib/api'
 
 export default function AuthPage() {
   const { user, login, signup } = useAuth()
-  const [mode, setMode] = useState<'login' | 'signup'>('login')
+  const [searchParams] = useSearchParams()
+  const [mode, setMode] = useState<'login' | 'signup'>(
+    searchParams.get('mode') === 'signup' ? 'signup' : 'login',
+  )
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -14,7 +17,7 @@ export default function AuthPage() {
   const [busy, setBusy] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
 
-  if (user) return <Navigate to="/" replace />
+  if (user) return <Navigate to="/dashboard" replace />
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
@@ -52,7 +55,7 @@ export default function AuthPage() {
       </section>
       <section className="flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-md">
-          <div className="mb-9 lg:hidden"><div className="flex items-center gap-2 font-semibold"><BookOpen className="text-brand-600" />Nexus Knowledge</div></div>
+          <div className="mb-9 lg:hidden"><Link to="/" className="flex items-center gap-2 font-semibold"><BookOpen className="text-brand-600" />Nexus Knowledge</Link></div>
           <div className="mb-8">
             <h2 className="text-3xl font-bold tracking-tight">{mode === 'login' ? 'Welcome back' : 'Create your workspace account'}</h2>
             <p className="mt-2 text-sm text-slate-500">{mode === 'login' ? 'Sign in to continue to your knowledge base.' : 'Start asking better questions of your documents.'}</p>
@@ -87,6 +90,7 @@ export default function AuthPage() {
             </button>
           </form>
           <div className="mt-10 flex items-center justify-center gap-2 text-xs text-slate-400"><LockKeyhole size={14} />JWT-secured sessions</div>
+          <p className="mt-4 text-center text-xs text-slate-400"><Link to="/" className="font-medium text-brand-600 hover:text-brand-700">← Back to product overview</Link></p>
         </div>
       </section>
     </div>

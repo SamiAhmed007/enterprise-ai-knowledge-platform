@@ -1,5 +1,5 @@
 import { ChangeEvent, DragEvent, useCallback, useEffect, useRef, useState } from 'react'
-import { AlertCircle, FileText, Loader2, RotateCcw, Trash2, UploadCloud } from 'lucide-react'
+import { AlertCircle, FileCheck2, FileText, Loader2, RotateCcw, Trash2, UploadCloud } from 'lucide-react'
 import PageHeader from '../components/PageHeader'
 import InlineError from '../components/InlineError'
 import { api, errorMessage, formatBytes } from '../lib/api'
@@ -12,6 +12,8 @@ export default function DocumentsPage() {
   const { activeWorkspaceId, activeWorkspace } = useWorkspace()
   const [documents, setDocuments] = useState<Document[]>([])
   const [busy, setBusy] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [uploadingName, setUploadingName] = useState('')
   const [retryingId, setRetryingId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -39,17 +41,23 @@ export default function DocumentsPage() {
 
   const uploadFile = async (file?: File) => {
     if (!file || !activeWorkspaceId) return
-    setBusy(true); setError('')
+    setBusy(true); setUploadProgress(0); setUploadingName(file.name); setError('')
     try {
       const body = new FormData()
       body.append('file', file)
-      const response = await api.post<Document>(`/workspaces/${activeWorkspaceId}/documents`, body)
+      const response = await api.post<Document>(`/workspaces/${activeWorkspaceId}/documents`, body, {
+        onUploadProgress: progress => {
+          if (progress.total) setUploadProgress(Math.round((progress.loaded / progress.total) * 100))
+        },
+      })
       setDocuments(items => [response.data, ...items.filter(item => item.id !== response.data.id)])
       setSuccess(`${file.name} was uploaded and queued for indexing.`)
     } catch (err) {
       setError(errorMessage(err))
     } finally {
       setBusy(false)
+      setUploadProgress(0)
+      setUploadingName('')
     }
   }
 
@@ -98,32 +106,70 @@ export default function DocumentsPage() {
       <InlineError message={error} retry={() => { void load() }} />
       <Toast message={success} dismiss={() => setSuccess('')} />
       <div className="panel overflow-hidden">
-        <div className="border-b px-5 py-4">
+        <div className="border-b px-5 py-5 sm:px-6">
           <h2 className="font-semibold">Knowledge sources</h2>
           <p className="mt-1 text-xs text-slate-500">PDF, TXT, or DOCX · 25 MB maximum</p>
         </div>
-        <div className="border-b bg-slate-50/60 p-4">
+        <div className="border-b bg-slate-50/60 p-4 sm:p-6">
           <div
             onDragEnter={event => { event.preventDefault(); setDragActive(true) }}
             onDragOver={event => event.preventDefault()}
             onDragLeave={() => setDragActive(false)}
             onDrop={drop}
-            className={`flex flex-col items-center justify-center rounded-xl border-2 border-dashed px-5 py-6 text-center transition sm:flex-row sm:text-left ${dragActive ? 'border-brand-500 bg-brand-50' : 'border-slate-200 bg-white'}`}
+            onClick={() => !busy && input.current?.click()}
+            role="button"
+            tabIndex={0}
+            onKeyDown={event => { if ((event.key === 'Enter' || event.key === ' ') && !busy) input.current?.click() }}
+            className={`cursor-pointer rounded-2xl border-2 border-dashed px-5 py-8 text-center transition ${dragActive ? 'scale-[1.01] border-brand-500 bg-brand-50 shadow-lg shadow-brand-100/50' : 'border-slate-200 bg-white hover:border-brand-300 hover:bg-brand-50/30'} ${busy ? 'pointer-events-none' : ''}`}
           >
-            <span className="mb-3 grid h-10 w-10 place-items-center rounded-xl bg-brand-50 text-brand-600 sm:mb-0 sm:mr-3"><UploadCloud size={19} /></span>
-            <div>
-              <p className="text-sm font-semibold">Drop a document here</p>
-              <p className="mt-0.5 text-xs text-slate-400">or use the upload button above</p>
-            </div>
+            {busy ? (
+              <div className="mx-auto max-w-md">
+                <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-brand-50 text-brand-600"><Loader2 className="animate-spin" size={21} /></span>
+                <p className="mt-3 truncate text-sm font-semibold">Uploading {uploadingName}</p>
+                <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-gradient-to-r from-brand-500 to-violet-500 transition-all" style={{ width: `${uploadProgress}%` }} /></div>
+                <p className="mt-2 text-xs font-medium text-brand-600">{uploadProgress}% uploaded</p>
+              </div>
+            ) : (
+              <>
+                <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-brand-50 text-brand-600"><UploadCloud size={21} /></span>
+                <p className="mt-3 text-sm font-semibold">Drop a document here, or click to browse</p>
+                <p className="mt-1 text-xs text-slate-400">Your document will be securely uploaded and indexed in the background.</p>
+              </>
+            )}
           </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
+        {!!documents.length && (
+          <div className="divide-y md:hidden">
+            {documents.map(document => (
+              <article key={document.id} className="p-5">
+                <div className="flex items-start gap-3">
+                  <span className={`rounded-xl p-2.5 ${document.status === 'READY' ? 'bg-emerald-50 text-emerald-600' : 'bg-brand-50 text-brand-600'}`}>
+                    {document.status === 'READY' ? <FileCheck2 size={18} /> : <FileText size={18} />}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">{document.name}</p>
+                    <p className="mt-1 text-xs text-slate-400">{formatBytes(document.sizeBytes)} · {new Date(document.createdAt).toLocaleDateString()}</p>
+                    <div className="mt-3"><StatusBadge status={document.status} /></div>
+                  </div>
+                  <div className="flex">
+                    {document.status === 'FAILED' && <button aria-label={`Retry ingestion for ${document.name}`} disabled={retryingId === document.id} onClick={() => retry(document.id)} className="rounded-lg p-2 text-brand-600 hover:bg-brand-50 disabled:opacity-50">{retryingId === document.id ? <Loader2 className="animate-spin" size={16} /> : <RotateCcw size={16} />}</button>}
+                    <button aria-label={`Delete ${document.name}`} onClick={() => remove(document.id)} className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600"><Trash2 size={16} /></button>
+                  </div>
+                </div>
+                {document.status === 'PROCESSING' && <p className="mt-3 text-xs text-amber-600">Extracting, chunking, and indexing…</p>}
+                {document.status === 'UPLOADED' && <p className="mt-3 text-xs text-slate-500">Queued for processing…</p>}
+                {document.errorMessage && <p className="mt-3 flex items-start gap-1.5 rounded-lg bg-red-50 p-2.5 text-xs leading-5 text-red-600"><AlertCircle className="mt-0.5 shrink-0" size={12} />{document.errorMessage}</p>}
+              </article>
+            ))}
+          </div>
+        )}
+        <div className="hidden overflow-x-auto md:block">
+          <table className="w-full min-w-[760px] text-left">
             <thead className="bg-slate-50/80 text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-5 py-3 font-medium">Name</th><th className="px-5 py-3 font-medium">Size</th><th className="px-5 py-3 font-medium">Uploaded</th><th className="px-5 py-3 font-medium">Status</th><th className="px-5 py-3" /></tr></thead>
             <tbody className="divide-y">
               {documents.map(document => (
-                <tr key={document.id} className="text-sm">
-                  <td className="px-5 py-4"><div className="flex items-start gap-3"><span className="rounded-lg bg-brand-50 p-2 text-brand-600"><FileText size={18} /></span><div><div className="max-w-xs truncate font-medium">{document.name}</div>{document.status === 'PROCESSING' && <div className="mt-1 text-xs text-amber-600">Extracting, chunking, and indexing…</div>}{document.status === 'UPLOADED' && <div className="mt-1 text-xs text-slate-500">Queued for processing…</div>}{document.errorMessage && <div className="mt-1 flex max-w-md items-start gap-1.5 text-xs leading-5 text-red-600"><AlertCircle className="mt-0.5 shrink-0" size={12} /><span>{document.errorMessage}</span></div>}</div></div></td>
+                <tr key={document.id} className="text-sm transition hover:bg-slate-50/70">
+                  <td className="px-5 py-4 sm:px-6"><div className="flex items-start gap-3"><span className={`rounded-xl p-2.5 ${document.status === 'READY' ? 'bg-emerald-50 text-emerald-600' : 'bg-brand-50 text-brand-600'}`}>{document.status === 'READY' ? <FileCheck2 size={18} /> : <FileText size={18} />}</span><div><div className="max-w-xs truncate font-semibold text-slate-800">{document.name}</div>{document.status === 'PROCESSING' && <div className="mt-1 text-xs text-amber-600">Extracting, chunking, and indexing…</div>}{document.status === 'UPLOADED' && <div className="mt-1 text-xs text-slate-500">Queued for processing…</div>}{document.errorMessage && <div className="mt-1 flex max-w-md items-start gap-1.5 text-xs leading-5 text-red-600"><AlertCircle className="mt-0.5 shrink-0" size={12} /><span>{document.errorMessage}</span></div>}</div></div></td>
                   <td className="px-5 py-4 text-slate-500">{formatBytes(document.sizeBytes)}</td>
                   <td className="px-5 py-4 text-slate-500">{new Date(document.createdAt).toLocaleDateString()}</td>
                   <td className="px-5 py-4"><StatusBadge status={document.status} /></td>
@@ -132,8 +178,8 @@ export default function DocumentsPage() {
               ))}
             </tbody>
           </table>
-          {!documents.length && <div className="px-5 py-16 text-center"><UploadCloud className="mx-auto text-slate-300" size={34} /><p className="mt-3 text-sm font-medium">Your knowledge base is empty</p><p className="mt-1 text-sm text-slate-400">Upload a document to start building it.</p></div>}
         </div>
+        {!documents.length && <div className="px-5 py-16 text-center"><span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-slate-50 text-slate-300"><FileText size={26} /></span><p className="mt-4 text-sm font-semibold">Your knowledge base is empty</p><p className="mt-1 text-sm text-slate-400">Upload your first document to start asking grounded questions.</p><button onClick={() => input.current?.click()} className="btn-secondary mt-5"><UploadCloud size={16} />Choose a document</button></div>}
       </div>
     </>
   )
