@@ -93,6 +93,57 @@ class ChatServiceTest {
     }
 
     @Test
+    void answersDefinitionQuestionWheneverRetrievedChunksAreAvailable() {
+        UUID documentId = UUID.randomUUID();
+        when(retrieval.search(eq(workspace.getId()), eq("What is data retention?"), anyList()))
+                .thenReturn(List.of(new HybridSearchService.SearchResult(
+                        documentId, "governance.pdf", 3, 7,
+                        "Data retention is the controlled preservation of records for a defined period.",
+                        0.88, 0.84, 0.97)));
+        when(ai.answer(eq("What is data retention?"), anyString()))
+                .thenReturn("Data retention is the controlled preservation of records for a defined period.");
+
+        var response = service.ask(
+                user, workspace.getId(), new AskRequest(null, "What is data retention?"));
+
+        assertThat(response.answer())
+                .contains("controlled preservation")
+                .endsWith("[Source 1]");
+        assertThat(response.citations()).singleElement().satisfies(citation -> {
+            assertThat(citation.documentId()).isEqualTo(documentId);
+            assertThat(citation.pageNumber()).isEqualTo(7);
+        });
+        verify(ai).answer(eq("What is data retention?"),
+                org.mockito.ArgumentMatchers.contains("Data retention is the controlled preservation"));
+    }
+
+    @Test
+    void answersSummaryQuestionUsingAllRetrievedChunks() {
+        when(retrieval.search(eq(workspace.getId()), eq("Summarize the security policy"), anyList()))
+                .thenReturn(List.of(
+                        new HybridSearchService.SearchResult(
+                                UUID.randomUUID(), "security.pdf", 0, 1,
+                                "Access requires multi-factor authentication.",
+                                0.91, 0.9, 0.94),
+                        new HybridSearchService.SearchResult(
+                                UUID.randomUUID(), "security.pdf", 1, 2,
+                                "Security events are reviewed every day.",
+                                0.86, 0.83, 0.93)));
+        when(ai.answer(eq("Summarize the security policy"), anyString()))
+                .thenReturn("The policy requires MFA [Source 1] and daily event review [Source 2].");
+
+        var response = service.ask(
+                user, workspace.getId(), new AskRequest(null, "Summarize the security policy"));
+
+        assertThat(response.answer()).contains("[Source 1]").contains("[Source 2]");
+        assertThat(response.citations()).hasSize(2);
+        verify(ai).answer(eq("Summarize the security policy"),
+                org.mockito.ArgumentMatchers.argThat(context ->
+                        context.contains("multi-factor authentication")
+                                && context.contains("reviewed every day")));
+    }
+
+    @Test
     void cannotAppendToAnotherUsersSession() {
         UUID sessionId = UUID.randomUUID();
         when(sessions.findWithMessagesByIdAndWorkspaceIdAndUserId(

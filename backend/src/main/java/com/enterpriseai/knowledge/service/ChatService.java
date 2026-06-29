@@ -51,6 +51,7 @@ public class ChatService {
         String answer = prepared.context().isBlank()
                 ? noContextAnswer()
                 : aiClient.answer(prepared.question(), prepared.context());
+        answer = ensureCitation(answer, prepared.citations());
         ChatSession saved = saveCompleted(prepared, answer);
         return new AskResponse(saved.getId(), answer, prepared.citations());
     }
@@ -83,6 +84,11 @@ public class ChatService {
                 send(emitter, "error", streamError("The AI provider returned an empty response"));
                 emitter.complete();
                 return;
+            }
+            String citedAnswer = ensureCitation(finalAnswer, prepared.citations());
+            if (!citedAnswer.equals(finalAnswer)) {
+                emitDelta(emitter, citedAnswer.substring(finalAnswer.length()), answer, cancelled);
+                finalAnswer = citedAnswer;
             }
 
             ChatSession saved = saveCompleted(prepared, finalAnswer);
@@ -202,6 +208,14 @@ public class ChatService {
     private String noContextAnswer() {
         return "I couldn't find sufficiently relevant information in the READY documents "
                 + "for this workspace. Try a more specific question or upload another source.";
+    }
+
+    private String ensureCitation(String answer, List<Citation> citations) {
+        if (answer == null || answer.isBlank() || citations.isEmpty()
+                || answer.matches("(?s).*\\[Source\\s+\\d+].*")) {
+            return answer;
+        }
+        return answer.stripTrailing() + " [Source 1]";
     }
 
     private void emitText(

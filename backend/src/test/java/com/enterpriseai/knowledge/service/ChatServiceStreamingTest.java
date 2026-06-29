@@ -70,8 +70,9 @@ class ChatServiceStreamingTest {
         verify(sessions).save(saved.capture());
         assertThat(saved.getValue().getMessages()).hasSize(2);
         assertThat(saved.getValue().getMessages().get(1).getRole()).isEqualTo(MessageRole.ASSISTANT);
-        assertThat(saved.getValue().getMessages().get(1).getContent()).isEqualTo("Hello world");
-        assertThat(emitter.events).isEqualTo(4);
+        assertThat(saved.getValue().getMessages().get(1).getContent())
+                .isEqualTo("Hello world [Source 1]");
+        assertThat(emitter.events).isEqualTo(5);
         assertThat(emitter.completed).isTrue();
     }
 
